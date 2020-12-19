@@ -1,14 +1,11 @@
 package com.solace.spring.cloud.stream.binder.inbound;
 
+import com.solace.spring.cloud.stream.binder.provisioning.SolaceConsumerDestination;
+import com.solace.spring.cloud.stream.binder.provisioning.SolaceTopicMatcher;
 import com.solace.spring.cloud.stream.binder.util.SolaceMessageConversionException;
 import com.solace.spring.cloud.stream.binder.util.SolaceMessageHeaderErrorMessageStrategy;
 import com.solace.spring.cloud.stream.binder.util.XMLMessageMapper;
-import com.solacesystems.jcsmp.BytesXMLMessage;
-import com.solacesystems.jcsmp.ClosedFacilityException;
-import com.solacesystems.jcsmp.FlowReceiver;
-import com.solacesystems.jcsmp.JCSMPException;
-import com.solacesystems.jcsmp.JCSMPTransportException;
-import com.solacesystems.jcsmp.XMLMessage;
+import com.solacesystems.jcsmp.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.cloud.stream.provisioning.ConsumerDestination;
@@ -19,6 +16,10 @@ import org.springframework.integration.support.ErrorMessageUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -27,7 +28,7 @@ import java.util.function.Supplier;
 
 class InboundXMLMessageListener implements Runnable {
 	final FlowReceiver flowReceiver;
-	final ConsumerDestination consumerDestination;
+	final SolaceConsumerDestination consumerDestination;
 	final ThreadLocal<AttributeAccessor> attributesHolder;
 	private final XMLMessageMapper xmlMessageMapper = new XMLMessageMapper();
 	private final Consumer<Message<?>> messageConsumer;
@@ -58,7 +59,7 @@ class InboundXMLMessageListener implements Runnable {
 							  boolean needHolder,
 							  boolean needAttributes) {
 		this.flowReceiver = flowReceiver;
-		this.consumerDestination = consumerDestination;
+		this.consumerDestination = (SolaceConsumerDestination) consumerDestination;
 		this.messageConsumer = messageConsumer;
 		this.errorHandlerFunction = errorHandlerFunction;
 		this.remoteStopFlag = () -> remoteStopFlag != null && remoteStopFlag.get();
@@ -111,7 +112,7 @@ class InboundXMLMessageListener implements Runnable {
 		}
 
 		try {
-			final Message<?> message = xmlMessageMapper.map(bytesXMLMessage);
+			final Message<?> message = xmlMessageMapper.map(bytesXMLMessage, consumerDestination.getTopicMatcher());
 			handleMessage(message, bytesXMLMessage);
 		} catch (SolaceMessageConversionException e) {
 			handleError(e, bytesXMLMessage, bytesXMLMessage::ackMessage);

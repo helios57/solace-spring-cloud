@@ -1,34 +1,22 @@
 package com.solace.spring.cloud.stream.binder.provisioning;
 
 import com.solace.spring.cloud.stream.binder.properties.SolaceCommonProperties;
+import com.solace.spring.cloud.stream.binder.properties.SolaceConsumerProperties;
+import com.solace.spring.cloud.stream.binder.properties.SolaceProducerProperties;
 import com.solace.spring.cloud.stream.binder.util.SolaceProvisioningUtil;
-import com.solacesystems.jcsmp.ConsumerFlowProperties;
-import com.solacesystems.jcsmp.EndpointProperties;
-import com.solacesystems.jcsmp.InvalidOperationException;
-import com.solacesystems.jcsmp.JCSMPErrorResponseException;
-import com.solacesystems.jcsmp.JCSMPErrorResponseSubcodeEx;
-import com.solacesystems.jcsmp.JCSMPException;
-import com.solacesystems.jcsmp.JCSMPFactory;
-import com.solacesystems.jcsmp.JCSMPSession;
+import com.solacesystems.jcsmp.*;
 import com.solacesystems.jcsmp.Queue;
-import com.solacesystems.jcsmp.Topic;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
-import com.solace.spring.cloud.stream.binder.properties.SolaceConsumerProperties;
-import com.solace.spring.cloud.stream.binder.properties.SolaceProducerProperties;
 import org.springframework.cloud.stream.provisioning.ConsumerDestination;
 import org.springframework.cloud.stream.provisioning.ProducerDestination;
 import org.springframework.cloud.stream.provisioning.ProvisioningException;
 import org.springframework.cloud.stream.provisioning.ProvisioningProvider;
 import org.springframework.util.StringUtils;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class SolaceQueueProvisioner
@@ -120,21 +108,29 @@ public class SolaceQueueProvisioner
 			}
 		}
 
+		List<SolaceTopicMatcher> topicMatcher = new ArrayList<>();
+
 		logger.info(isAnonQueue ?
 				String.format("Creating anonymous (temporary) queue %s", queueName) :
 				String.format("Creating %s queue %s for consumer group %s", isDurableQueue ? "durable" : "temporary", queueName, group));
 		Queue queue = provisionQueue(queueName, isDurableQueue, endpointProperties, doDurableQueueProvisioning);
 		trackQueueToTopicBinding(queue.getName(), topicName);
+		if (SolaceTopicMatcher.containsVariable(topicName)) {
+			topicMatcher.add(new SolaceTopicMatcher(topicName));
+		}
 
 		for (String additionalSubscription : properties.getExtension().getQueueAdditionalSubscriptions()) {
 			trackQueueToTopicBinding(queue.getName(), additionalSubscription);
+			if (SolaceTopicMatcher.containsVariable(additionalSubscription)) {
+				topicMatcher.add(new SolaceTopicMatcher(additionalSubscription));
+			}
 		}
 
 		if (properties.getExtension().isAutoBindDmq()) {
 			provisionDMQ(queueName, properties.getExtension());
 		}
 
-		return new SolaceConsumerDestination(queue.getName());
+		return new SolaceConsumerDestination(queue.getName(), topicMatcher);
 	}
 
 	private Queue provisionQueue(String name, boolean isDurable, EndpointProperties endpointProperties,
@@ -192,6 +188,8 @@ public class SolaceQueueProvisioner
 	}
 
 	public void addSubscriptionToQueue(Queue queue, String topicName, SolaceCommonProperties properties) {
+		topicName = SolaceTopicMatcher.replaceTopicVariablesToAsterisk(topicName);
+
 		logger.info(String.format("Subscribing queue %s to topic %s", queue.getName(), topicName));
 
 		if (queue.isDurable() && !properties.isProvisionSubscriptionsToDurableQueue()) {

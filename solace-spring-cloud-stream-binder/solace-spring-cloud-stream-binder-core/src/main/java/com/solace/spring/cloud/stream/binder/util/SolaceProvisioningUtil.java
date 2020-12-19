@@ -3,6 +3,7 @@ package com.solace.spring.cloud.stream.binder.util;
 import com.solace.spring.cloud.stream.binder.properties.SolaceCommonProperties;
 import com.solace.spring.cloud.stream.binder.properties.SolaceConsumerProperties;
 import com.solace.spring.cloud.stream.binder.properties.SolaceProducerProperties;
+import com.solace.spring.cloud.stream.binder.provisioning.SolaceTopicMatcher;
 import com.solacesystems.jcsmp.EndpointProperties;
 import com.solacesystems.jcsmp.JCSMPFactory;
 import org.springframework.util.StringUtils;
@@ -75,7 +76,7 @@ public class SolaceProvisioningUtil {
 	}
 
 	private static String replaceTopicWildCards(String topicName, CharSequence replacement) {
-		return topicName
+		return SolaceTopicMatcher.replaceTopicVariablesToAsterisk(topicName)
 				.replace("*", replacement)
 				.replace(">", replacement);
 	}

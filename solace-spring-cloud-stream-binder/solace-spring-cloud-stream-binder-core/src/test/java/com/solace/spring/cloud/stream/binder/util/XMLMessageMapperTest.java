@@ -6,17 +6,8 @@ import com.solace.spring.cloud.stream.binder.messaging.SolaceBinderHeaders;
 import com.solace.spring.cloud.stream.binder.messaging.SolaceHeaderMeta;
 import com.solace.spring.cloud.stream.binder.messaging.SolaceHeaders;
 import com.solace.spring.cloud.stream.binder.properties.SolaceConsumerProperties;
-import com.solacesystems.jcsmp.BytesMessage;
-import com.solacesystems.jcsmp.DeliveryMode;
-import com.solacesystems.jcsmp.JCSMPFactory;
-import com.solacesystems.jcsmp.MapMessage;
-import com.solacesystems.jcsmp.SDTException;
-import com.solacesystems.jcsmp.SDTMap;
-import com.solacesystems.jcsmp.SDTStream;
-import com.solacesystems.jcsmp.StreamMessage;
-import com.solacesystems.jcsmp.TextMessage;
-import com.solacesystems.jcsmp.XMLContentMessage;
-import com.solacesystems.jcsmp.XMLMessage;
+import com.solace.spring.cloud.stream.binder.provisioning.SolaceTopicMatcher;
+import com.solacesystems.jcsmp.*;
 import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang.math.RandomUtils;
 import org.apache.commons.logging.Log;
@@ -39,12 +30,7 @@ import org.springframework.util.MimeTypeUtils;
 import org.springframework.util.SerializationUtils;
 
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -427,7 +413,7 @@ public class XMLMessageMapperTest {
 		xmlMessage.setProperties(metadata);
 
 		Message<?> springMessage = xmlMessageMapper.map(xmlMessage);
-		Mockito.verify(xmlMessageMapper).map(xmlMessage, false);
+		Mockito.verify(xmlMessageMapper).map(xmlMessage, Collections.emptyList(), false);
 
 		assertThat(springMessage.getPayload(), CoreMatchers.instanceOf(byte[].class));
 		assertArrayEquals(xmlMessage.getData(), (byte[]) springMessage.getPayload());
@@ -445,7 +431,7 @@ public class XMLMessageMapperTest {
 		xmlMessage.setProperties(metadata);
 
 		Message<?> springMessage = xmlMessageMapper.map(xmlMessage);
-		Mockito.verify(xmlMessageMapper).map(xmlMessage, false);
+		Mockito.verify(xmlMessageMapper).map(xmlMessage, Collections.emptyList(), false);
 
 		assertThat(springMessage.getPayload(), CoreMatchers.instanceOf(String.class));
 		assertEquals(xmlMessage.getText(), springMessage.getPayload());
@@ -465,7 +451,7 @@ public class XMLMessageMapperTest {
 		xmlMessage.setProperties(metadata);
 
 		Message<?> springMessage = xmlMessageMapper.map(xmlMessage);
-		Mockito.verify(xmlMessageMapper).map(xmlMessage, false);
+		Mockito.verify(xmlMessageMapper).map(xmlMessage, Collections.emptyList(), false);
 
 		assertThat(springMessage.getPayload(), CoreMatchers.instanceOf(SerializableFoo.class));
 		assertEquals(expectedPayload, springMessage.getPayload());
@@ -488,7 +474,7 @@ public class XMLMessageMapperTest {
 		xmlMessage.setProperties(metadata);
 
 		Message<?> springMessage = xmlMessageMapper.map(xmlMessage);
-		Mockito.verify(xmlMessageMapper).map(xmlMessage, false);
+		Mockito.verify(xmlMessageMapper).map(xmlMessage, Collections.emptyList(), false);
 
 		assertThat(springMessage.getPayload(), CoreMatchers.instanceOf(SDTStream.class));
 		assertEquals(expectedPayload, springMessage.getPayload());
@@ -511,7 +497,7 @@ public class XMLMessageMapperTest {
 		xmlMessage.setProperties(metadata);
 
 		Message<?> springMessage = xmlMessageMapper.map(xmlMessage);
-		Mockito.verify(xmlMessageMapper).map(xmlMessage, false);
+		Mockito.verify(xmlMessageMapper).map(xmlMessage, Collections.emptyList(), false);
 
 		assertThat(springMessage.getPayload(), CoreMatchers.instanceOf(SDTMap.class));
 		assertEquals(expectedPayload, springMessage.getPayload());
@@ -529,7 +515,7 @@ public class XMLMessageMapperTest {
 		xmlMessage.setProperties(metadata);
 
 		Message<?> springMessage = xmlMessageMapper.map(xmlMessage);
-		Mockito.verify(xmlMessageMapper).map(xmlMessage, false);
+		Mockito.verify(xmlMessageMapper).map(xmlMessage, Collections.emptyList(), false);
 
 		assertThat(springMessage.getPayload(), CoreMatchers.instanceOf(String.class));
 		assertEquals(xmlMessage.getXMLContent(), springMessage.getPayload());
@@ -568,7 +554,7 @@ public class XMLMessageMapperTest {
 		xmlMessage.setHTTPContentType(MimeTypeUtils.TEXT_HTML_VALUE);
 
 		Message<?> springMessage = xmlMessageMapper.map(xmlMessage);
-		Mockito.verify(xmlMessageMapper).map(xmlMessage, false);
+		Mockito.verify(xmlMessageMapper).map(xmlMessage, Collections.emptyList(), false);
 
 		assertEquals(metadata.getString(MessageHeaders.CONTENT_TYPE),
 				Objects.requireNonNull(StaticMessageHeaderAccessor.getContentType(springMessage)).toString());
@@ -658,7 +644,7 @@ public class XMLMessageMapperTest {
 		metadata.putString(MessageHeaders.CONTENT_TYPE, MimeTypeUtils.TEXT_PLAIN_VALUE);
 
 		Message<?> springMessage = xmlMessageMapper.map(xmlMessage);
-		Mockito.verify(xmlMessageMapper).map(xmlMessage, false);
+		Mockito.verify(xmlMessageMapper).map(xmlMessage, Collections.emptyList(), false);
 
 		for (Map.Entry<String, ? extends HeaderMeta<?>> header : readableHeaders) {
 			Object actualValue = springMessage.getHeaders().get(header.getKey());
@@ -756,7 +742,7 @@ public class XMLMessageMapperTest {
 		metadata.putString(MessageHeaders.CONTENT_TYPE, MimeTypeUtils.TEXT_PLAIN_VALUE);
 
 		Message<?> springMessage = xmlMessageMapper.map(xmlMessage);
-		Mockito.verify(xmlMessageMapper).map(xmlMessage, false);
+		Mockito.verify(xmlMessageMapper).map(xmlMessage, Collections.emptyList(), false);
 
 		for (Map.Entry<String, ? extends HeaderMeta<?>> header : nonReadableHeaders) {
 			assertThat(springMessage.getHeaders(), not(hasKey(header)));
@@ -999,5 +985,91 @@ public class XMLMessageMapperTest {
 		}
 		stream.rewind();
 		return found;
+	}
+
+	@Test
+	public void testMapXMLMessageToSpringMessage_DestinationVariablesHeader() {
+		Destination destination = Mockito.mock(Destination.class);
+		Mockito.when(destination.getName()).thenReturn("sensor/temperature/indoor/ch/3600/main_street_33/living_room");
+
+		TextMessage textMessage = Mockito.mock(TextMessage.class);
+		Mockito.when(textMessage.getProperties()).thenReturn(JCSMPFactory.onlyInstance().createMap());
+		Mockito.when(textMessage.getText()).thenReturn("HOOPLA!!!");
+		Mockito.when(textMessage.getMessageId()).thenReturn("abcdefg");
+		Mockito.when(textMessage.getHTTPContentType()).thenReturn(MimeTypeUtils.TEXT_PLAIN_VALUE);
+		Mockito.when(textMessage.getDestination()).thenReturn(destination);
+
+		List<SolaceTopicMatcher> topicMatchers = new ArrayList<>();
+		topicMatchers.add(new SolaceTopicMatcher("sensor/humidity/outdoor/<country>/<zip>/<address>"));
+		topicMatchers.add(new SolaceTopicMatcher("sensor/humidity/indoor/<country>/<zip>/<address>/<room>"));
+		topicMatchers.add(new SolaceTopicMatcher("sensor/temperature/outdoor/<country>/<zip>/<address>"));
+		topicMatchers.add(new SolaceTopicMatcher("sensor/temperature/indoor/<country>/<zip>/<address>/<room>"));
+		topicMatchers.add(new SolaceTopicMatcher("sensor/co2/indoor/<country>/<zip>/<address>/<room>"));
+
+		Message<?> springMessage = xmlMessageMapper.map(textMessage, topicMatchers);
+		Mockito.verify(xmlMessageMapper).map(textMessage, topicMatchers, false);
+
+		Map<String, String> destVars = (Map<String, String>) springMessage.getHeaders().get("destinationVariables");
+		assertNotNull(destVars);
+		assertEquals("ch", destVars.get("country"));
+		assertEquals("3600", destVars.get("zip"));
+		assertEquals("main_street_33", destVars.get("address"));
+		assertEquals("living_room", destVars.get("room"));
+	}
+
+	@Test
+	public void testMapXMLMessageToSpringMessage_DestinationVariablesHeaderEndWildcard() {
+		Destination destination = Mockito.mock(Destination.class);
+		Mockito.when(destination.getName()).thenReturn("sensor/temperature/indoor/ch/3600/main_street_33/living_room/sensor_abc/v3");
+
+		TextMessage textMessage = Mockito.mock(TextMessage.class);
+		Mockito.when(textMessage.getProperties()).thenReturn(JCSMPFactory.onlyInstance().createMap());
+		Mockito.when(textMessage.getText()).thenReturn("HOOPLA!!!");
+		Mockito.when(textMessage.getMessageId()).thenReturn("abcdefg");
+		Mockito.when(textMessage.getHTTPContentType()).thenReturn(MimeTypeUtils.TEXT_PLAIN_VALUE);
+		Mockito.when(textMessage.getDestination()).thenReturn(destination);
+
+		List<SolaceTopicMatcher> topicMatchers = new ArrayList<>();
+		topicMatchers.add(new SolaceTopicMatcher("sensor/temperature/indoor/<country>/<zip>/<address>/<room>/>"));
+
+		Message<?> springMessage = xmlMessageMapper.map(textMessage, topicMatchers);
+		Mockito.verify(xmlMessageMapper).map(textMessage, topicMatchers, false);
+
+		Map<String, String> destVars = (Map<String, String>) springMessage.getHeaders().get("destinationVariables");
+		assertNotNull(destVars);
+		assertEquals("ch", destVars.get("country"));
+		assertEquals("3600", destVars.get("zip"));
+		assertEquals("main_street_33", destVars.get("address"));
+		assertEquals("living_room", destVars.get("room"));
+	}
+	@Test
+	public void testMapXMLMessageToSpringMessage_DestinationVariablesHeaderPerformance_shouldStopTestingAfterFirstHit() {
+		Destination destination = Mockito.mock(Destination.class);
+		Mockito.when(destination.getName()).thenReturn("sensor/temperature/indoor/ch/3600/main_street_33/living_room");
+
+		TextMessage textMessage = Mockito.mock(TextMessage.class);
+		Mockito.when(textMessage.getProperties()).thenReturn(JCSMPFactory.onlyInstance().createMap());
+		Mockito.when(textMessage.getText()).thenReturn("HOOPLA!!!");
+		Mockito.when(textMessage.getMessageId()).thenReturn("abcdefg");
+		Mockito.when(textMessage.getHTTPContentType()).thenReturn(MimeTypeUtils.TEXT_PLAIN_VALUE);
+		Mockito.when(textMessage.getDestination()).thenReturn(destination);
+
+		List<SolaceTopicMatcher> topicMatchers = new ArrayList<>();
+		SolaceTopicMatcher topicMapperA = Mockito.mock(SolaceTopicMatcher.class);
+		Mockito.when(topicMapperA.match(Mockito.anyString())).thenReturn(null);
+		topicMatchers.add(topicMapperA);
+
+		SolaceTopicMatcher topicMapperB = Mockito.mock(SolaceTopicMatcher.class);
+		Mockito.when(topicMapperB.match(Mockito.anyString())).thenReturn(Collections.emptyMap());
+		topicMatchers.add(topicMapperB);
+
+		SolaceTopicMatcher topicMapperC = Mockito.mock(SolaceTopicMatcher.class);
+		Mockito.when(topicMapperC.match(Mockito.anyString())).thenReturn(null);
+		topicMatchers.add(topicMapperC);
+
+		xmlMessageMapper.map(textMessage, topicMatchers);
+		Mockito.verify(topicMapperA).match(Mockito.anyString());
+		Mockito.verify(topicMapperB).match(Mockito.anyString());
+		Mockito.verify(topicMapperC, Mockito.never()).match(Mockito.anyString());
 	}
 }
