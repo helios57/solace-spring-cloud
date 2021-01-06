@@ -193,6 +193,9 @@ public class XMLMessageMapperTest {
 				case SolaceHeaders.REPLY_TO:
 					value = JCSMPFactory.onlyInstance().createQueue(RandomStringUtils.randomAlphanumeric(10));
 					break;
+				case SolaceHeaders.REPLY_MESSAGE:
+					value = !defaultXmlMessage.isReplyMessage();
+					break;
 				case SolaceHeaders.USER_DATA:
 					value = RandomStringUtils.randomAlphanumeric(10).getBytes();
 					break;
@@ -233,6 +236,9 @@ public class XMLMessageMapperTest {
 					break;
 				case SolaceHeaders.REPLY_TO:
 					assertEquals(expectedValue, xmlMessage.getReplyTo());
+					break;
+				case SolaceHeaders.REPLY_MESSAGE:
+					assertEquals(expectedValue, xmlMessage.isReplyMessage());
 					break;
 				case SolaceHeaders.SENDER_ID:
 					assertEquals(expectedValue, xmlMessage.getSenderId());
@@ -616,6 +622,9 @@ public class XMLMessageMapperTest {
 					Mockito.when(xmlMessage.getReplyTo())
 							.thenReturn(JCSMPFactory.onlyInstance().createQueue(header.getKey()));
 					break;
+				case SolaceHeaders.REPLY_MESSAGE:
+					Mockito.when(xmlMessage.isReplyMessage()).thenReturn(!defaultXmlMessage.isReplyMessage());
+					break;
 				case SolaceHeaders.SENDER_ID:
 					Mockito.when(xmlMessage.getSenderId()).thenReturn(header.getKey());
 					break;
@@ -684,6 +693,9 @@ public class XMLMessageMapperTest {
 					break;
 				case SolaceHeaders.REPLY_TO:
 					assertEquals(xmlMessage.getReplyTo(), actualValue);
+					break;
+				case SolaceHeaders.REPLY_MESSAGE:
+					assertEquals(xmlMessage.isReplyMessage(), actualValue);
 					break;
 				case SolaceHeaders.SENDER_ID:
 					assertEquals(xmlMessage.getSenderId(), actualValue);
