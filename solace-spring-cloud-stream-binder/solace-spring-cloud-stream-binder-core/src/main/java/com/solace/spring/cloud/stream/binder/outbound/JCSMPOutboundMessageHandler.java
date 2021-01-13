@@ -1,5 +1,6 @@
 package com.solace.spring.cloud.stream.binder.outbound;
 
+import com.solace.spring.cloud.stream.binder.properties.SolaceProducerProperties;
 import com.solace.spring.cloud.stream.binder.util.ClosedChannelBindingException;
 import com.solace.spring.cloud.stream.binder.util.JCSMPSessionProducerManager;
 import com.solace.spring.cloud.stream.binder.util.SolaceMessageConversionException;
@@ -11,18 +12,22 @@ import org.springframework.cloud.stream.binder.BinderHeaders;
 import org.springframework.cloud.stream.provisioning.ProducerDestination;
 import org.springframework.context.Lifecycle;
 import org.springframework.integration.support.ErrorMessageStrategy;
+import org.springframework.messaging.*;
+import org.springframework.integration.support.MessageBuilder;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageChannel;
-import org.springframework.messaging.MessageHandler;
-import org.springframework.messaging.MessagingException;
 import org.springframework.util.StringUtils;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 public class JCSMPOutboundMessageHandler implements MessageHandler, Lifecycle {
 	private final String id = UUID.randomUUID().toString();
 	private final Topic topic;
 	private final JCSMPSession jcsmpSession;
+	private final SolaceProducerProperties properties;
 	private MessageChannel errorChannel;
 	private JCSMPSessionProducerManager producerManager;
 	private XMLMessageProducer producer;
@@ -35,11 +40,13 @@ public class JCSMPOutboundMessageHandler implements MessageHandler, Lifecycle {
 	public JCSMPOutboundMessageHandler(ProducerDestination destination,
 									   JCSMPSession jcsmpSession,
 									   MessageChannel errorChannel,
-									   JCSMPSessionProducerManager producerManager) {
+									   JCSMPSessionProducerManager producerManager,
+									   SolaceProducerProperties properties) {
 		this.topic = JCSMPFactory.onlyInstance().createTopic(destination.getName());
 		this.jcsmpSession = jcsmpSession;
 		this.errorChannel = errorChannel;
 		this.producerManager = producerManager;
+		this.properties = properties;
 	}
 
 	@Override
@@ -66,7 +73,12 @@ public class JCSMPOutboundMessageHandler implements MessageHandler, Lifecycle {
 					String.format("Unable to parse header %s", BinderHeaders.TARGET_DESTINATION), message, e);
 		}
 
-		XMLMessage xmlMessage = xmlMessageMapper.map(message);
+		Message messageExcludedHeaders = MessageBuilder
+				.withPayload(message.getPayload())
+				.copyHeaders(excludeHeaders(message.getHeaders()))
+				.build();
+
+		XMLMessage xmlMessage = xmlMessageMapper.map(messageExcludedHeaders);
 
 		try {
 			producer.send(xmlMessage, targetTopic);
@@ -74,6 +86,15 @@ public class JCSMPOutboundMessageHandler implements MessageHandler, Lifecycle {
 			throw handleMessagingException(
 					String.format("Unable to send message to topic %s", targetTopic.getName()), message, e);
 		}
+	}
+
+	private MessageHeaders excludeHeaders(MessageHeaders headers) {
+		List<Map.Entry<String, Object>> entries = headers.entrySet().stream()
+				.filter(entry -> !this.properties.getHeaderExclusions().contains(entry.getKey()))
+				.collect(Collectors.toList());
+		Map<String, Object> nextHeaders = new HashMap<String, Object>();
+		nextHeaders.forEach((headerName, header) -> nextHeaders.put(headerName, header));
+		return new MessageHeaders(nextHeaders);
 	}
 
 	@Override
