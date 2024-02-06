@@ -9,22 +9,7 @@ import com.solace.spring.cloud.stream.binder.messaging.SolaceBinderHeaders;
 import com.solace.spring.cloud.stream.binder.properties.SolaceConsumerProperties;
 import com.solace.spring.cloud.stream.binder.test.util.SerializableFoo;
 import com.solace.test.integration.junit.jupiter.extension.PubSubPlusExtension;
-import com.solacesystems.jcsmp.BytesMessage;
-import com.solacesystems.jcsmp.BytesXMLMessage;
-import com.solacesystems.jcsmp.JCSMPException;
-import com.solacesystems.jcsmp.JCSMPFactory;
-import com.solacesystems.jcsmp.JCSMPProperties;
-import com.solacesystems.jcsmp.JCSMPSession;
-import com.solacesystems.jcsmp.JCSMPStreamingPublishCorrelatingEventHandler;
-import com.solacesystems.jcsmp.MapMessage;
-import com.solacesystems.jcsmp.SDTMap;
-import com.solacesystems.jcsmp.SDTStream;
-import com.solacesystems.jcsmp.StreamMessage;
-import com.solacesystems.jcsmp.TextMessage;
-import com.solacesystems.jcsmp.XMLMessage;
-import com.solacesystems.jcsmp.XMLMessageConsumer;
-import com.solacesystems.jcsmp.XMLMessageListener;
-import com.solacesystems.jcsmp.XMLMessageProducer;
+import com.solacesystems.jcsmp.*;
 import com.solacesystems.jms.SolConnectionFactory;
 import com.solacesystems.jms.SolJmsUtility;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -160,7 +145,7 @@ public class JmsCompatibilityIT {
 			springMessageBuilder.setHeader(headerMeta.getKey(), value);
 		}
 
-		XMLMessage jcsmpMessage = xmlMessageMapper.map(springMessageBuilder.build(), null, false);
+		XMLMessage jcsmpMessage = xmlMessageMapper.map(springMessageBuilder.build(), null, false, DeliveryMode.PERSISTENT);
 
 		AtomicReference<Exception> exceptionAtomicReference = new AtomicReference<>();
 		CountDownLatch latch = new CountDownLatch(1);
@@ -211,7 +196,7 @@ public class JmsCompatibilityIT {
 		XMLMessage jcsmpMessage = xmlMessageMapper.map(new DefaultMessageBuilderFactory()
 				.withPayload("test")
 				.setHeader(headerName, headerValue)
-				.build(), null, false);
+				.build(), null, false, DeliveryMode.PERSISTENT);
 
 		AtomicReference<Exception> exceptionAtomicReference = new AtomicReference<>();
 		CountDownLatch latch = new CountDownLatch(1);
@@ -312,7 +297,7 @@ public class JmsCompatibilityIT {
 		jmsConnection.start();
 
 		for (Message<?> message : messages) {
-			jcsmpProducer.send(xmlMessageMapper.map(message, null, false), jcsmpTopic);
+			jcsmpProducer.send(xmlMessageMapper.map(message, null, false, DeliveryMode.PERSISTENT), jcsmpTopic);
 		}
 
 		assertTrue(latch.await(1, TimeUnit.MINUTES));
@@ -416,7 +401,7 @@ public class JmsCompatibilityIT {
 
 		jmsConnection.start();
 		jcsmpProducer.send(xmlMessageMapper.map(new DefaultMessageBuilderFactory().withPayload(payload).build(),
-				null, false),
+				null, false, DeliveryMode.PERSISTENT),
 				jcsmpTopic);
 
 		assertTrue(latch.await(1, TimeUnit.MINUTES));

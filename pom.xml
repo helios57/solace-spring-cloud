@@ -150,15 +150,10 @@
                 </property>
             </activation>
             <distributionManagement>
-                <repository>
-                    <id>releases</id>
-                    <name>Apps Releases Repository</name>
-                    <url>http://apps-jenkins:9090/nexus/content/repositories/releases</url>
-                </repository>
                 <snapshotRepository>
                     <id>snapshots</id>
                     <name>Apps Snapshots Repository</name>
-                    <url>http://apps-jenkins:9090/nexus/content/repositories/snapshots</url>
+                    <url>https://bin.sbb.ch/artifactory/tms.mvn/</url>
                 </snapshotRepository>
             </distributionManagement>
         </profile>
@@ -174,7 +169,7 @@
                 <repository>
                     <id>github</id>
                     <name>GitHub SolaceDev Maven Packages - Solace Spring Cloud</name>
-                    <url>https://maven.pkg.github.com/SolaceDev/solace-spring-cloud</url>
+                    <url>https://maven.pkg.github.com/SchweizerischeBundesbahnen/solace-spring-cloud</url>
                 </repository>
             </distributionManagement>
         </profile>
@@ -280,87 +275,6 @@
                 </executions>
             </plugin>
 
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>1.6.0</version>
-                <inherited>false</inherited>
-                <executions>
-                    <execution>
-                        <id>git-submodule-update</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>git</executable>
-                            <arguments>
-                                <argument>submodule</argument>
-                                <argument>update</argument>
-                                <argument>--init</argument>
-                                <argument>--recursive</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>solace-integration-test-support_fetch</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <skip>${solace.integration.test.support.fetch_checkout.skip}</skip>
-                            <executable>git</executable>
-                            <arguments>
-                                <argument>-C</argument>
-                                <argument>${basedir}/solace-integration-test-support/</argument>
-                                <argument>fetch</argument>
-                                <argument>--depth</argument>
-                                <argument>1</argument>
-                                <argument>origin</argument>
-                                <argument>refs/tags/${solace.integration.test.support.version}:refs/tags/${solace.integration.test.support.version}</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>solace-integration-test-support_checkout</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <skip>${solace.integration.test.support.fetch_checkout.skip}</skip>
-                            <executable>git</executable>
-                            <arguments>
-                                <argument>-C</argument>
-                                <argument>${basedir}/solace-integration-test-support/</argument>
-                                <argument>checkout</argument>
-                                <argument>${solace.integration.test.support.version}</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>solace-integration-test-support_install</id>
-                        <phase>generate-resources</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <skip>${solace.integration.test.support.install.skip}</skip>
-                            <executable>mvn</executable>
-                            <arguments>
-                                <argument>clean</argument>
-                                <argument>install</argument>
-                                <argument>-f</argument>
-                                <argument>${basedir}/solace-integration-test-support/</argument>
-                                <argument>-DskipTests</argument>
-                                <argument>-Dchangelist=</argument>
-                                <argument>-q</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
     </build>
 </project>
