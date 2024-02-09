@@ -54,7 +54,9 @@ public class BlockingQueueReceiverContainer implements Receiver {
         BytesXMLMessage xmlMessage;
         try {
             if (realTimeout == null || realTimeout == 0) {
-                xmlMessage = messageReceiver.poll();
+                do {
+                    xmlMessage = messageReceiver.poll(500, TimeUnit.MILLISECONDS);
+                } while (xmlMessage == null);
             } else {
                 xmlMessage = messageReceiver.poll(realTimeout, TimeUnit.MILLISECONDS);
             }
@@ -84,7 +86,8 @@ public class BlockingQueueReceiverContainer implements Receiver {
     }
 
     @Override
-    public Future<UUID> futureAcknowledgeRebind(MessageContainer messageContainer) throws SolaceStaleMessageException {
+    public Future<UUID> futureAcknowledgeRebind(MessageContainer messageContainer) throws
+            SolaceStaleMessageException {
         acknowledge(messageContainer);
 
         return CompletableFuture.completedFuture(id);
@@ -97,7 +100,8 @@ public class BlockingQueueReceiverContainer implements Receiver {
     }
 
     @Override
-    public UUID acknowledgeRebind(MessageContainer messageContainer, boolean returnImmediately) throws SolaceStaleMessageException {
+    public UUID acknowledgeRebind(MessageContainer messageContainer, boolean returnImmediately) throws
+            SolaceStaleMessageException {
         acknowledge(messageContainer);
         return id;
     }

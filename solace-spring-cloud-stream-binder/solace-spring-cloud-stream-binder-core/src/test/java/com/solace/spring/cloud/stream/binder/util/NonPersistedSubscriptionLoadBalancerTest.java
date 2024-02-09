@@ -87,4 +87,28 @@ class NonPersistedSubscriptionLoadBalancerTest {
 
         assertFalse(lb.isMatchingTopicFilter("animals/domestic"));
     }
+
+    @Test
+    void perf() {
+        long start = System.currentTimeMillis();
+        NonPersistedSubscriptionLoadBalancer lb = new NonPersistedSubscriptionLoadBalancer(Set.of(
+                "tms/outpost/apionlytraffic/i/v2/e2e/ch5/latency-roundtrip-request",
+                "tms/outpost/apionlytraffic/i/v2/e2e/ch5/latency-roundtrip-reply/sink/halon-vrcs",
+                "tms/outpost/apionlytraffic/i/v2/e2e/ch5/latency-roundtrip-reply/sink/halon-fooo",
+                "tms/outpost/apionlytraffic/i/v2/e2e/ch5/latency-roundtrip-reply/sink/halon-baaa",
+                "tms/outpost/apionlytraffic/i/v2/e2e/ch5/latency-roundtrip-reply/sink/halon-grrr",
+                "tms/outpost/apionlytraffic/i/v2/e2e/ch5/latency-roundtrip-reply/sink/halon-daaa",
+                "tms/outpost/apionlytraffic/i/v2/e2e/ch5/latency-roundtrip-reply/sink/halon-tzz",
+                "tms/outpost/apionlytraffic/i/v2/e2e/ch5/latency-roundtrip-reply/sink/halon-dsfsd",
+                "tms/monitoring/monalesy/i/v1/metric/*/tms/outpost/testing/>"
+        ));
+
+        int iterations = 1_000_000;
+        for (int i = 0; i < iterations; i++) {
+            lb.isMatchingTopicFilter("tms/outpost/apionlytraffic/i/v2/e2e/ch5/latency-roundtrip-request/" +i);
+        }
+
+        System.out.println("Runtime: " + (System.currentTimeMillis() - start) + "ms");
+        System.out.println("Runtime per item: " + ((double)(System.currentTimeMillis() - start) / iterations * 60) + "ms");
+    }
 }

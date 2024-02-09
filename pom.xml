@@ -169,7 +169,7 @@
                 <repository>
                     <id>github</id>
                     <name>GitHub SolaceDev Maven Packages - Solace Spring Cloud</name>
-                    <url>https://maven.pkg.github.com/SchweizerischeBundesbahnen/solace-spring-cloud</url>
+                    <url>https://maven.pkg.github.com/GreenRover/solace-spring-cloud</url>
                 </repository>
             </distributionManagement>
         </profile>

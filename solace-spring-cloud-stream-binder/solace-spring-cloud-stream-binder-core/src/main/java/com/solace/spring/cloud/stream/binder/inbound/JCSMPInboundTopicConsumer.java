@@ -87,36 +87,38 @@ public class JCSMPInboundTopicConsumer extends MessageProducerSupport implements
             retryTemplate.registerListener(new SolaceRetryListener(consumerDestination.getBindingDestinationName()));
         }
 
-        try {
-            if (msgConsumer == null) {
-                msgConsumer = jcsmpSession.getMessageConsumer(new XMLMessageListener() {
-                    @Override
-                    public void onReceive(final BytesXMLMessage msg) {
-                        try {
-                            for (NonPersistedSubscriptionLoadBalancer lb : loadBalancers.values()) {
-                                lb.process(msg);
+        synchronized (loadBalancers) {
+            try {
+                if (msgConsumer == null) {
+                    msgConsumer = jcsmpSession.getMessageConsumer(new XMLMessageListener() {
+                        @Override
+                        public void onReceive(final BytesXMLMessage msg) {
+                            try {
+                                for (NonPersistedSubscriptionLoadBalancer lb : loadBalancers.values()) {
+                                    lb.process(msg);
+                                }
+                            } catch (InterruptedException e) {
+                                throw new RuntimeException(e);
                             }
-                        } catch (InterruptedException e) {
-                            throw new RuntimeException(e);
                         }
-                    }
 
-                    @Override
-                    public void onException(final JCSMPException e) {
-                        String msg = String.format("Received error while trying to read message from endpoint %s", consumerDestination.getBindingDestinationName());
-                        if ((e instanceof JCSMPTransportException || e instanceof ClosedFacilityException)) {
-                            logger.debug(msg, e);
-                        } else {
-                            logger.warn(msg, e);
+                        @Override
+                        public void onException(final JCSMPException e) {
+                            String msg = String.format("Received error while trying to read message from endpoint %s", consumerDestination.getBindingDestinationName());
+                            if ((e instanceof JCSMPTransportException || e instanceof ClosedFacilityException)) {
+                                logger.debug(msg, e);
+                            } else {
+                                logger.warn(msg, e);
+                            }
                         }
-                    }
-                });
-                msgConsumer.start();
+                    });
+                    msgConsumer.start();
+                }
+            } catch (JCSMPException e) {
+                String msg = String.format("Failed to get message consumer for inbound adapter %s", id);
+                logger.warn(msg, e);
+                throw new MessagingException(msg, e);
             }
-        } catch (JCSMPException e) {
-            String msg = String.format("Failed to get message consumer for inbound adapter %s", id);
-            logger.warn(msg, e);
-            throw new MessagingException(msg, e);
         }
 
         executorService = Executors.newFixedThreadPool(consumerProperties.getConcurrency());
