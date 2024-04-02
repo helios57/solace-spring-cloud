@@ -67,14 +67,9 @@
         <module>solace-spring-cloud-stream-binder/solace-spring-cloud-stream-binder</module>
         <module>solace-spring-cloud-stream-binder/solace-spring-cloud-stream-binder-core</module>
         <module>solace-spring-cloud-starters/solace-spring-cloud-stream-starter</module>
+        <module>spring-cloud-stream-binder-solace-test</module>
     </modules>
 
-    <scm>
-        <url>https://github.com/${repoName}/solace-spring-cloud.git</url>
-        <connection>scm:git:git://github.com/${repoName}/solace-spring-cloud.git</connection>
-        <developerConnection>scm:git:git@github.com:${repoName}/solace-spring-cloud.git</developerConnection>
-        <tag>HEAD</tag>
-    </scm>
 
     <dependencyManagement>
         <dependencies>
@@ -85,112 +80,6 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-
-    <profiles>
-        <profile>
-            <id>releaseCentral</id>
-            <activation>
-                <property>
-                    <name>releaseTarget</name>
-                    <value>central</value>
-                </property>
-            </activation>
-            <properties>
-                <gpg.executable>gpg2</gpg.executable>
-            </properties>
-            <distributionManagement>
-                <snapshotRepository>
-                    <id>ossrh</id>
-                    <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
-                </snapshotRepository>
-            </distributionManagement>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-deploy-plugin</artifactId>
-                        <version>2.8.2</version>
-                        <configuration>
-                            <skip>true</skip>
-                        </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.sonatype.plugins</groupId>
-                        <artifactId>nexus-staging-maven-plugin</artifactId>
-                        <version>1.6.13</version>
-                        <extensions>true</extensions>
-                        <configuration>
-                            <serverId>ossrh</serverId>
-                            <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
-                            <autoReleaseAfterClose>true</autoReleaseAfterClose>
-                        </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <version>1.5</version>
-                        <executions>
-                            <execution>
-                                <id>sign-artifacts</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>sign</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>releaseInternal</id>
-            <activation>
-                <property>
-                    <name>!releaseTarget</name>
-                </property>
-            </activation>
-            <distributionManagement>
-                <repository>
-                    <id>releases</id>
-                    <name>Apps Releases Repository</name>
-                    <url>http://apps-jenkins:9090/nexus/content/repositories/releases</url>
-                </repository>
-                <snapshotRepository>
-                    <id>snapshots</id>
-                    <name>Apps Snapshots Repository</name>
-                    <url>http://apps-jenkins:9090/nexus/content/repositories/snapshots</url>
-                </snapshotRepository>
-            </distributionManagement>
-        </profile>
-        <profile>
-            <id>releaseGitHub</id>
-            <activation>
-                <property>
-                    <name>releaseTarget</name>
-                    <value>github</value>
-                </property>
-            </activation>
-            <distributionManagement>
-                <repository>
-                    <id>github</id>
-                    <name>GitHub SolaceDev Maven Packages - Solace Spring Cloud</name>
-                    <url>https://maven.pkg.github.com/SolaceDev/solace-spring-cloud</url>
-                </repository>
-            </distributionManagement>
-        </profile>
-
-        <profile>
-            <id>solace-integration-test-support_install</id>
-            <activation>
-                <file>
-                    <missing>${user.home}/.m2/repository/com/solace/test/integration/solace-integration-test-support/${solace.integration.test.support.version}</missing>
-                </file>
-            </activation>
-            <properties>
-                <solace.integration.test.support.install.skip>false</solace.integration.test.support.install.skip>
-            </properties>
-        </profile>
-    </profiles>
 
     <build>
         <plugins>
@@ -276,88 +165,6 @@
                         <goals>
                             <goal>clean</goal>
                         </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>1.6.0</version>
-                <inherited>false</inherited>
-                <executions>
-                    <execution>
-                        <id>git-submodule-update</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>git</executable>
-                            <arguments>
-                                <argument>submodule</argument>
-                                <argument>update</argument>
-                                <argument>--init</argument>
-                                <argument>--recursive</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>solace-integration-test-support_fetch</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <skip>${solace.integration.test.support.fetch_checkout.skip}</skip>
-                            <executable>git</executable>
-                            <arguments>
-                                <argument>-C</argument>
-                                <argument>${basedir}/solace-integration-test-support/</argument>
-                                <argument>fetch</argument>
-                                <argument>--depth</argument>
-                                <argument>1</argument>
-                                <argument>origin</argument>
-                                <argument>refs/tags/${solace.integration.test.support.version}:refs/tags/${solace.integration.test.support.version}</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>solace-integration-test-support_checkout</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <skip>${solace.integration.test.support.fetch_checkout.skip}</skip>
-                            <executable>git</executable>
-                            <arguments>
-                                <argument>-C</argument>
-                                <argument>${basedir}/solace-integration-test-support/</argument>
-                                <argument>checkout</argument>
-                                <argument>${solace.integration.test.support.version}</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>solace-integration-test-support_install</id>
-                        <phase>generate-resources</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <skip>${solace.integration.test.support.install.skip}</skip>
-                            <executable>mvn</executable>
-                            <arguments>
-                                <argument>clean</argument>
-                                <argument>install</argument>
-                                <argument>-f</argument>
-                                <argument>${basedir}/solace-integration-test-support/</argument>
-                                <argument>-DskipTests</argument>
-                                <argument>-Dchangelist=</argument>
-                                <argument>-q</argument>
-                            </arguments>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>
