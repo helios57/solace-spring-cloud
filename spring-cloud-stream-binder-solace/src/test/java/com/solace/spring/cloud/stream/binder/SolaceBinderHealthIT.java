@@ -48,226 +48,226 @@ import static com.solace.spring.cloud.stream.binder.test.util.RetryableAssertion
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringJUnitConfig(classes = {
-		SolaceHealthIndicatorsConfiguration.class,
-		SolaceJavaAutoConfiguration.class
+        SolaceHealthIndicatorsConfiguration.class,
+        SolaceJavaAutoConfiguration.class
 }, initializers = ConfigDataApplicationContextInitializer.class)
 @ExtendWith(PubSubPlusExtension.class)
 @ExtendWith(SpringCloudStreamExtension.class)
 public class SolaceBinderHealthIT {
-	private static final Logger logger = LoggerFactory.getLogger(SolaceBinderHealthIT.class);
+    private static final Logger logger = LoggerFactory.getLogger(SolaceBinderHealthIT.class);
 
-	@CartesianTest(name = "[{index}] channelType={0}, autoStart={1} concurrency={2}")
-	public <T> void testConsumerFlowHealthProvisioning(
-			@Values(classes = {DirectChannel.class, PollableSource.class}) Class<T> channelType,
-			@Values(booleans = {true, false}) boolean autoStart,
-			@Values(ints = {1, 3}) int concurrency,
-			SpringCloudStreamContext context) throws Exception {
-		if (concurrency > 1 && channelType.equals(PollableSource.class)) {
-			return;
-		}
+    @CartesianTest(name = "[{index}] channelType={0}, autoStart={1} concurrency={2}")
+    public <T> void testConsumerFlowHealthProvisioning(
+            @Values(classes = {DirectChannel.class, PollableSource.class}) Class<T> channelType,
+            @Values(booleans = {true, false}) boolean autoStart,
+            @Values(ints = {1, 3}) int concurrency,
+            SpringCloudStreamContext context) throws Exception {
+        if (concurrency > 1 && channelType.equals(PollableSource.class)) {
+            return;
+        }
 
-		SolaceTestBinder binder = context.getBinder();
+        SolaceTestBinder binder = context.getBinder();
 
-		BindingsHealthContributor bindingsHealthContributor = new BindingsHealthContributor();
-		binder.getBinder().setSolaceBinderHealthAccessor(new SolaceBinderHealthAccessor(
-				new SolaceBinderHealthContributor(new SessionHealthIndicator(), bindingsHealthContributor)));
+        BindingsHealthContributor bindingsHealthContributor = new BindingsHealthContributor();
+        binder.getBinder().setSolaceBinderHealthAccessor(new SolaceBinderHealthAccessor(
+                new SolaceBinderHealthContributor(new SessionHealthIndicator(), bindingsHealthContributor)));
 
-		ConsumerInfrastructureUtil<T> consumerInfrastructureUtil = context.createConsumerInfrastructureUtil(channelType);
-		T moduleInputChannel = consumerInfrastructureUtil.createChannel("input", new BindingProperties());
+        ConsumerInfrastructureUtil<T> consumerInfrastructureUtil = context.createConsumerInfrastructureUtil(channelType);
+        T moduleInputChannel = consumerInfrastructureUtil.createChannel("input", new BindingProperties());
 
-		String destination0 = RandomStringUtils.randomAlphanumeric(10);
+        String destination0 = RandomStringUtils.randomAlphanumeric(10);
 
-		ExtendedConsumerProperties<SolaceConsumerProperties> consumerProperties = context.createConsumerProperties();
-		consumerProperties.populateBindingName(RandomStringUtils.randomAlphanumeric(10));
-		consumerProperties.setAutoStartup(autoStart);
-		consumerProperties.setConcurrency(concurrency);
+        ExtendedConsumerProperties<SolaceConsumerProperties> consumerProperties = context.createConsumerProperties();
+        consumerProperties.populateBindingName(RandomStringUtils.randomAlphanumeric(10));
+        consumerProperties.setAutoStartup(autoStart);
+        consumerProperties.setConcurrency(concurrency);
 
-		Binding<T> consumerBinding = consumerInfrastructureUtil.createBinding(binder,
-				destination0, RandomStringUtils.randomAlphanumeric(10), moduleInputChannel, consumerProperties);
+        Binding<T> consumerBinding = consumerInfrastructureUtil.createBinding(binder,
+                destination0, RandomStringUtils.randomAlphanumeric(10), moduleInputChannel, consumerProperties);
 
-		context.binderBindUnbindLatency();
+        context.binderBindUnbindLatency();
 
-		if (!autoStart) {
-			assertThat(bindingsHealthContributor.iterator().hasNext()).isFalse();
-			logger.info("Starting binding...");
-			consumerBinding.start();
-		}
+        if (!autoStart) {
+            assertThat(bindingsHealthContributor.iterator().hasNext()).isFalse();
+            logger.info("Starting binding...");
+            consumerBinding.start();
+        }
 
-		assertThat(bindingsHealthContributor)
-				.asInstanceOf(InstanceOfAssertFactories.type(BindingsHealthContributor.class))
-				.satisfies(SolaceSpringCloudStreamAssertions.isSingleBindingHealthAvailable(consumerProperties.getBindingName(), concurrency, Status.UP));
+        assertThat(bindingsHealthContributor)
+                .asInstanceOf(InstanceOfAssertFactories.type(BindingsHealthContributor.class))
+                .satisfies(SolaceSpringCloudStreamAssertions.isSingleBindingHealthAvailable(consumerProperties.getBindingName(), concurrency, Status.UP));
 
-		logger.info("Pausing binding...");
-		consumerBinding.pause();
-		assertThat(bindingsHealthContributor)
-				.asInstanceOf(InstanceOfAssertFactories.type(BindingsHealthContributor.class))
-				.satisfies(SolaceSpringCloudStreamAssertions.isSingleBindingHealthAvailable(consumerProperties.getBindingName(), concurrency, Status.UP));
+        logger.info("Pausing binding...");
+        consumerBinding.pause();
+        assertThat(bindingsHealthContributor)
+                .asInstanceOf(InstanceOfAssertFactories.type(BindingsHealthContributor.class))
+                .satisfies(SolaceSpringCloudStreamAssertions.isSingleBindingHealthAvailable(consumerProperties.getBindingName(), concurrency, Status.UP));
 
-		logger.info("Stopping binding...");
-		consumerBinding.stop();
-		assertThat(bindingsHealthContributor)
-				.asInstanceOf(InstanceOfAssertFactories.type(BindingsHealthContributor.class))
-				.extracting(c -> c.getContributor(consumerProperties.getBindingName()))
-				.extracting(BindingHealthContributor::getFlowsHealthContributor)
-				.extracting(f -> StreamSupport.stream(f.spliterator(), false))
-				.asInstanceOf(InstanceOfAssertFactories.stream(NamedContributor.class))
-				.isEmpty();
+        logger.info("Stopping binding...");
+        consumerBinding.stop();
+        assertThat(bindingsHealthContributor)
+                .asInstanceOf(InstanceOfAssertFactories.type(BindingsHealthContributor.class))
+                .extracting(c -> c.getContributor(consumerProperties.getBindingName()))
+                .extracting(BindingHealthContributor::getFlowsHealthContributor)
+                .extracting(f -> StreamSupport.stream(f.spliterator(), false))
+                .asInstanceOf(InstanceOfAssertFactories.stream(NamedContributor.class))
+                .isEmpty();
 
-		logger.info("Starting binding...");
-		consumerBinding.start();
-		assertThat(bindingsHealthContributor)
-				.asInstanceOf(InstanceOfAssertFactories.type(BindingsHealthContributor.class))
-				.satisfies(SolaceSpringCloudStreamAssertions.isSingleBindingHealthAvailable(consumerProperties.getBindingName(), concurrency, Status.UP));
+        logger.info("Starting binding...");
+        consumerBinding.start();
+        assertThat(bindingsHealthContributor)
+                .asInstanceOf(InstanceOfAssertFactories.type(BindingsHealthContributor.class))
+                .satisfies(SolaceSpringCloudStreamAssertions.isSingleBindingHealthAvailable(consumerProperties.getBindingName(), concurrency, Status.UP));
 
-		logger.info("Resuming binding...");
-		consumerBinding.resume();
-		assertThat(bindingsHealthContributor)
-				.asInstanceOf(InstanceOfAssertFactories.type(BindingsHealthContributor.class))
-				.satisfies(SolaceSpringCloudStreamAssertions.isSingleBindingHealthAvailable(consumerProperties.getBindingName(), concurrency, Status.UP));
+        logger.info("Resuming binding...");
+        consumerBinding.resume();
+        assertThat(bindingsHealthContributor)
+                .asInstanceOf(InstanceOfAssertFactories.type(BindingsHealthContributor.class))
+                .satisfies(SolaceSpringCloudStreamAssertions.isSingleBindingHealthAvailable(consumerProperties.getBindingName(), concurrency, Status.UP));
 
-		consumerBinding.unbind();
-	}
+        consumerBinding.unbind();
+    }
 
-	@CartesianTest(name = "[{index}] channelType={0}, concurrency={1} healthStatus={2}")
-	public <T> void testConsumerFlowHealthUnhealthy(
-			@Values(classes = {DirectChannel.class, PollableSource.class}) Class<T> channelType,
-			@Values(ints = {1, 3}) int concurrency,
-			@Values(strings = {"DOWN", "RECONNECTING"}) String healthStatus,
-			SempV2Api sempV2Api,
-			SpringCloudStreamContext context) throws Exception {
-		if (concurrency > 1 && channelType.equals(PollableSource.class)) {
-			return;
-		}
+    @CartesianTest(name = "[{index}] channelType={0}, concurrency={1} healthStatus={2}")
+    public <T> void testConsumerFlowHealthUnhealthy(
+            @Values(classes = {DirectChannel.class, PollableSource.class}) Class<T> channelType,
+            @Values(ints = {1, 3}) int concurrency,
+            @Values(strings = {"DOWN", "RECONNECTING"}) String healthStatus,
+            SempV2Api sempV2Api,
+            SpringCloudStreamContext context) throws Exception {
+        if (concurrency > 1 && channelType.equals(PollableSource.class)) {
+            return;
+        }
 
-		SolaceTestBinder binder = context.getBinder();
+        SolaceTestBinder binder = context.getBinder();
 
-		BindingsHealthContributor bindingsHealthContributor = new BindingsHealthContributor();
-		binder.getBinder().setSolaceBinderHealthAccessor(new SolaceBinderHealthAccessor(
-				new SolaceBinderHealthContributor(new SessionHealthIndicator(), bindingsHealthContributor)));
+        BindingsHealthContributor bindingsHealthContributor = new BindingsHealthContributor();
+        binder.getBinder().setSolaceBinderHealthAccessor(new SolaceBinderHealthAccessor(
+                new SolaceBinderHealthContributor(new SessionHealthIndicator(), bindingsHealthContributor)));
 
-		ConsumerInfrastructureUtil<T> consumerInfrastructureUtil = context.createConsumerInfrastructureUtil(channelType);
-		T moduleInputChannel = consumerInfrastructureUtil.createChannel("input", new BindingProperties());
+        ConsumerInfrastructureUtil<T> consumerInfrastructureUtil = context.createConsumerInfrastructureUtil(channelType);
+        T moduleInputChannel = consumerInfrastructureUtil.createChannel("input", new BindingProperties());
 
-		String destination0 = RandomStringUtils.randomAlphanumeric(10);
+        String destination0 = RandomStringUtils.randomAlphanumeric(10);
 
-		ExtendedConsumerProperties<SolaceConsumerProperties> consumerProperties = context.createConsumerProperties();
-		consumerProperties.populateBindingName(RandomStringUtils.randomAlphanumeric(10));
-		consumerProperties.setConcurrency(concurrency);
+        ExtendedConsumerProperties<SolaceConsumerProperties> consumerProperties = context.createConsumerProperties();
+        consumerProperties.populateBindingName(RandomStringUtils.randomAlphanumeric(10));
+        consumerProperties.setConcurrency(concurrency);
 
-		Binding<T> consumerBinding = consumerInfrastructureUtil.createBinding(binder,
-				destination0, RandomStringUtils.randomAlphanumeric(10), moduleInputChannel, consumerProperties);
+        Binding<T> consumerBinding = consumerInfrastructureUtil.createBinding(binder,
+                destination0, RandomStringUtils.randomAlphanumeric(10), moduleInputChannel, consumerProperties);
 
-		context.binderBindUnbindLatency();
+        context.binderBindUnbindLatency();
 
-		assertThat(bindingsHealthContributor)
-				.asInstanceOf(InstanceOfAssertFactories.type(BindingsHealthContributor.class))
-				.satisfies(SolaceSpringCloudStreamAssertions.isSingleBindingHealthAvailable(consumerProperties.getBindingName(), concurrency, Status.UP));
+        assertThat(bindingsHealthContributor)
+                .asInstanceOf(InstanceOfAssertFactories.type(BindingsHealthContributor.class))
+                .satisfies(SolaceSpringCloudStreamAssertions.isSingleBindingHealthAvailable(consumerProperties.getBindingName(), concurrency, Status.UP));
 
-		String vpnName = (String) context.getJcsmpSession().getProperty(JCSMPProperties.VPN_NAME);
-		String queueName = binder.getConsumerQueueName(consumerBinding);
-		logger.info(String.format("Disabling egress for queue %s", queueName));
-		switch (healthStatus) {
-			case "DOWN" -> sempV2Api.config().deleteMsgVpnQueue(vpnName, queueName);
-			case "RECONNECTING" -> sempV2Api.config()
-					.updateMsgVpnQueue(vpnName, queueName, new ConfigMsgVpnQueue().egressEnabled(false), null);
-			default -> throw new IllegalArgumentException("No test for health status: " + healthStatus);
-		}
+        String vpnName = (String) context.getJcsmpSession().getProperty(JCSMPProperties.VPN_NAME);
+        String queueName = binder.getConsumerQueueName(consumerBinding);
+        logger.info(String.format("Disabling egress for queue %s", queueName));
+        switch (healthStatus) {
+            case "DOWN" -> sempV2Api.config().deleteMsgVpnQueue(vpnName, queueName);
+            case "RECONNECTING" -> sempV2Api.config()
+                    .updateMsgVpnQueue(new ConfigMsgVpnQueue().egressEnabled(false), vpnName, queueName, null, null);
+            default -> throw new IllegalArgumentException("No test for health status: " + healthStatus);
+        }
 
-		retryAssert(2, TimeUnit.MINUTES,
-				() -> assertThat(bindingsHealthContributor)
-						.asInstanceOf(InstanceOfAssertFactories.type(BindingsHealthContributor.class))
-						.satisfies(SolaceSpringCloudStreamAssertions.isSingleBindingHealthAvailable(
-								consumerProperties.getBindingName(), concurrency, new Status(healthStatus))));
+        retryAssert(2, TimeUnit.MINUTES,
+                () -> assertThat(bindingsHealthContributor)
+                        .asInstanceOf(InstanceOfAssertFactories.type(BindingsHealthContributor.class))
+                        .satisfies(SolaceSpringCloudStreamAssertions.isSingleBindingHealthAvailable(
+                                consumerProperties.getBindingName(), concurrency, new Status(healthStatus))));
 
-		if (healthStatus.equals("RECONNECTING")) {
-			sempV2Api.config()
-					.updateMsgVpnQueue(vpnName, queueName, new ConfigMsgVpnQueue().egressEnabled(true), null);
-			retryAssert(2, TimeUnit.MINUTES,
-					() -> assertThat(bindingsHealthContributor)
-							.asInstanceOf(InstanceOfAssertFactories.type(BindingsHealthContributor.class))
-							.satisfies(SolaceSpringCloudStreamAssertions.isSingleBindingHealthAvailable(
-									consumerProperties.getBindingName(), concurrency, Status.UP)));
-		}
+        if (healthStatus.equals("RECONNECTING")) {
+            sempV2Api.config()
+                    .updateMsgVpnQueue(new ConfigMsgVpnQueue().egressEnabled(true), vpnName, queueName, null, null);
+            retryAssert(2, TimeUnit.MINUTES,
+                    () -> assertThat(bindingsHealthContributor)
+                            .asInstanceOf(InstanceOfAssertFactories.type(BindingsHealthContributor.class))
+                            .satisfies(SolaceSpringCloudStreamAssertions.isSingleBindingHealthAvailable(
+                                    consumerProperties.getBindingName(), concurrency, Status.UP)));
+        }
 
-		consumerBinding.unbind();
-	}
+        consumerBinding.unbind();
+    }
 
-	@CartesianTest(name = "[{index}] channelType={0}")
-	public <T> void testConsumerFlowHealthNack(
-			@Values(classes = {DirectChannel.class, PollableSource.class}) Class<T> channelType,
-			SpringCloudStreamContext context,
-			TestInfo testInfo) throws Exception {
-		SolaceTestBinder binder = context.getBinder();
+    @CartesianTest(name = "[{index}] channelType={0}")
+    public <T> void testConsumerFlowHealthNack(
+            @Values(classes = {DirectChannel.class, PollableSource.class}) Class<T> channelType,
+            SpringCloudStreamContext context,
+            TestInfo testInfo) throws Exception {
+        SolaceTestBinder binder = context.getBinder();
 
-		BindingsHealthContributor bindingsHealthContributor = Mockito.spy(new BindingsHealthContributor());
-		binder.getBinder().setSolaceBinderHealthAccessor(new SolaceBinderHealthAccessor(
-				new SolaceBinderHealthContributor(new SessionHealthIndicator(), bindingsHealthContributor)));
+        BindingsHealthContributor bindingsHealthContributor = Mockito.spy(new BindingsHealthContributor());
+        binder.getBinder().setSolaceBinderHealthAccessor(new SolaceBinderHealthAccessor(
+                new SolaceBinderHealthContributor(new SessionHealthIndicator(), bindingsHealthContributor)));
 
-		ConsumerInfrastructureUtil<T> consumerInfrastructureUtil = context.createConsumerInfrastructureUtil(channelType);
+        ConsumerInfrastructureUtil<T> consumerInfrastructureUtil = context.createConsumerInfrastructureUtil(channelType);
 
-		DirectChannel moduleOutputChannel = context.createBindableChannel("output", new BindingProperties());
-		T moduleInputChannel = consumerInfrastructureUtil.createChannel("input", new BindingProperties());
+        DirectChannel moduleOutputChannel = context.createBindableChannel("output", new BindingProperties());
+        T moduleInputChannel = consumerInfrastructureUtil.createChannel("input", new BindingProperties());
 
-		String destination0 = RandomStringUtils.randomAlphanumeric(10);
+        String destination0 = RandomStringUtils.randomAlphanumeric(10);
 
-		ExtendedConsumerProperties<SolaceConsumerProperties> consumerProperties = context.createConsumerProperties();
-		consumerProperties.populateBindingName(RandomStringUtils.randomAlphanumeric(10));
+        ExtendedConsumerProperties<SolaceConsumerProperties> consumerProperties = context.createConsumerProperties();
+        consumerProperties.populateBindingName(RandomStringUtils.randomAlphanumeric(10));
 
-		Binding<MessageChannel> producerBinding = binder.bindProducer(
-				destination0, moduleOutputChannel, context.createProducerProperties(testInfo));
-		Binding<T> consumerBinding = consumerInfrastructureUtil.createBinding(binder,
-				destination0, RandomStringUtils.randomAlphanumeric(10), moduleInputChannel, consumerProperties);
+        Binding<MessageChannel> producerBinding = binder.bindProducer(
+                destination0, moduleOutputChannel, context.createProducerProperties(testInfo));
+        Binding<T> consumerBinding = consumerInfrastructureUtil.createBinding(binder,
+                destination0, RandomStringUtils.randomAlphanumeric(10), moduleInputChannel, consumerProperties);
 
-		context.binderBindUnbindLatency();
+        context.binderBindUnbindLatency();
 
-		assertThat(bindingsHealthContributor)
-				.asInstanceOf(InstanceOfAssertFactories.type(BindingsHealthContributor.class))
-				.satisfies(SolaceSpringCloudStreamAssertions.isSingleBindingHealthAvailable(consumerProperties.getBindingName(), 1, Status.UP));
+        assertThat(bindingsHealthContributor)
+                .asInstanceOf(InstanceOfAssertFactories.type(BindingsHealthContributor.class))
+                .satisfies(SolaceSpringCloudStreamAssertions.isSingleBindingHealthAvailable(consumerProperties.getBindingName(), 1, Status.UP));
 
-		String flowHealthId = "flow-0";
-		BindingHealthContributor bindingHealthContributor = (BindingHealthContributor) bindingsHealthContributor
-				.getContributor(consumerProperties.getBindingName());
-		FlowsHealthContributor flowsHealthContributor = bindingHealthContributor.getFlowsHealthContributor();
+        String flowHealthId = "flow-0";
+        BindingHealthContributor bindingHealthContributor = (BindingHealthContributor) bindingsHealthContributor
+                .getContributor(consumerProperties.getBindingName());
+        FlowsHealthContributor flowsHealthContributor = bindingHealthContributor.getFlowsHealthContributor();
 
-		logger.info("Injecting Mockito spy into flow health indicator: {}", flowHealthId);
-		FlowHealthIndicator flowHealthIndicator = Mockito.spy((FlowHealthIndicator) (flowsHealthContributor
-				.getContributor(flowHealthId)));
-		flowsHealthContributor.removeFlowContributor(flowHealthId);
-		flowsHealthContributor.addFlowContributor(flowHealthId, flowHealthIndicator);
+        logger.info("Injecting Mockito spy into flow health indicator: {}", flowHealthId);
+        FlowHealthIndicator flowHealthIndicator = Mockito.spy((FlowHealthIndicator) (flowsHealthContributor
+                .getContributor(flowHealthId)));
+        flowsHealthContributor.removeFlowContributor(flowHealthId);
+        flowsHealthContributor.addFlowContributor(flowHealthId, flowHealthIndicator);
 
-		logger.info("Injecting Mockito spy into flows health indicator for binding: {}", consumerProperties.getBindingName());
-		flowsHealthContributor = Mockito.spy(flowsHealthContributor);
-		bindingsHealthContributor.removeBindingContributor(consumerProperties.getBindingName());
-		bindingsHealthContributor.addBindingContributor(consumerProperties.getBindingName(),
-				Mockito.spy(new BindingHealthContributor(flowsHealthContributor)));
+        logger.info("Injecting Mockito spy into flows health indicator for binding: {}", consumerProperties.getBindingName());
+        flowsHealthContributor = Mockito.spy(flowsHealthContributor);
+        bindingsHealthContributor.removeBindingContributor(consumerProperties.getBindingName());
+        bindingsHealthContributor.addBindingContributor(consumerProperties.getBindingName(),
+                Mockito.spy(new BindingHealthContributor(flowsHealthContributor)));
 
-		// Clear invocations due to spy injection
-		// Real test begins now...
-		Mockito.clearInvocations(bindingsHealthContributor);
+        // Clear invocations due to spy injection
+        // Real test begins now...
+        Mockito.clearInvocations(bindingsHealthContributor);
 
-		consumerInfrastructureUtil.sendAndSubscribe(moduleInputChannel, consumerProperties.getMaxAttempts(),
-				() -> moduleOutputChannel.send(MessageBuilder.withPayload(UUID.randomUUID().toString().getBytes())
-						.build()),
-				(msg, callback) -> {
-					callback.run();
-					throw new RuntimeException("Throwing expected exception!");
-				});
+        consumerInfrastructureUtil.sendAndSubscribe(moduleInputChannel, consumerProperties.getMaxAttempts(),
+                () -> moduleOutputChannel.send(MessageBuilder.withPayload(UUID.randomUUID().toString().getBytes())
+                        .build()),
+                (msg, callback) -> {
+                    callback.run();
+                    throw new RuntimeException("Throwing expected exception!");
+                });
 
-		Mockito.verify(flowHealthIndicator, Mockito.never()
-				.description("Flow rebind should not have caused health to go down"))
-				.down(Mockito.any());
-		Mockito.verify(flowsHealthContributor, Mockito.never()
-						.description("Flow rebind should not have caused flow health indicator to be removed"))
-				.removeFlowContributor(Mockito.any());
-		Mockito.verify(bindingsHealthContributor, Mockito.never()
-						.description("Flow rebind should not have caused health component to be removed"))
-				.removeBindingContributor(Mockito.any());
+        Mockito.verify(flowHealthIndicator, Mockito.never()
+                        .description("Flow rebind should not have caused health to go down"))
+                .down(Mockito.any());
+        Mockito.verify(flowsHealthContributor, Mockito.never()
+                        .description("Flow rebind should not have caused flow health indicator to be removed"))
+                .removeFlowContributor(Mockito.any());
+        Mockito.verify(bindingsHealthContributor, Mockito.never()
+                        .description("Flow rebind should not have caused health component to be removed"))
+                .removeBindingContributor(Mockito.any());
 
-		assertThat(bindingsHealthContributor)
-				.asInstanceOf(InstanceOfAssertFactories.type(BindingsHealthContributor.class))
-				.satisfies(SolaceSpringCloudStreamAssertions.isSingleBindingHealthAvailable(consumerProperties.getBindingName(), 1, Status.UP));
+        assertThat(bindingsHealthContributor)
+                .asInstanceOf(InstanceOfAssertFactories.type(BindingsHealthContributor.class))
+                .satisfies(SolaceSpringCloudStreamAssertions.isSingleBindingHealthAvailable(consumerProperties.getBindingName(), 1, Status.UP));
 
-		producerBinding.unbind();
-		consumerBinding.unbind();
-	}
+        producerBinding.unbind();
+        consumerBinding.unbind();
+    }
 }
