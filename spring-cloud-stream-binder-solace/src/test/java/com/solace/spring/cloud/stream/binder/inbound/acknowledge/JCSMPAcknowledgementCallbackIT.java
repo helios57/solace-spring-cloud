@@ -23,6 +23,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.junitpioneer.jupiter.cartesian.CartesianTest;
@@ -48,6 +51,8 @@ import static org.junit.jupiter.api.Assertions.*;
         initializers = ConfigDataApplicationContextInitializer.class)
 @ExtendWith(ExecutorServiceExtension.class)
 @ExtendWith(PubSubPlusExtension.class)
+@Isolated
+@Execution(ExecutionMode.SAME_THREAD)
 @Timeout(value = 2, unit = TimeUnit.MINUTES)
 public class JCSMPAcknowledgementCallbackIT {
     private RetryableTaskService retryableTaskService;

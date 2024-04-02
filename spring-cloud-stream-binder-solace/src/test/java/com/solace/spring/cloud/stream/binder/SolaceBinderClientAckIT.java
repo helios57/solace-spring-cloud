@@ -23,6 +23,9 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.junitpioneer.jupiter.cartesian.CartesianTest;
@@ -71,6 +74,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ExtendWith(PubSubPlusExtension.class)
 @ExtendWith(SpringCloudStreamExtension.class)
 @ExtendWith(ExecutorServiceExtension.class)
+@Isolated
+@Execution(ExecutionMode.SAME_THREAD)
 public class SolaceBinderClientAckIT<T> {
 	private static final Logger logger = LoggerFactory.getLogger(SolaceBinderClientAckIT.class);
 

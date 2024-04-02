@@ -40,6 +40,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.junitpioneer.jupiter.cartesian.CartesianTest;
@@ -96,6 +97,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @SpringJUnitConfig(classes = SolaceJavaAutoConfiguration.class, initializers = ConfigDataApplicationContextInitializer.class)
 @ExtendWith(PubSubPlusExtension.class)
 @ExtendWith(SpringCloudStreamExtension.class)
+@Isolated
+@Execution(ExecutionMode.SAME_THREAD)
 public class SolaceBinderProvisioningLifecycleIT {
     private static final Logger logger = LoggerFactory.getLogger(SolaceBinderProvisioningLifecycleIT.class);
 

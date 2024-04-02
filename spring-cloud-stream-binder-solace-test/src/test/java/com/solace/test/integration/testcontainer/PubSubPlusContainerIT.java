@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@Testcontainers
+@Testcontainers(parallel = true)
 public class PubSubPlusContainerIT {
 	@Container
 	private static final PubSubPlusContainer CONTAINER = new PubSubPlusContainer();

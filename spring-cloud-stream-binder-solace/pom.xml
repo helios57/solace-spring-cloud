@@ -150,7 +150,7 @@
         </dependency>
         <dependency>
             <groupId>ch.sbb</groupId>
-            <artifactId>solace-spring-cloud-stream-binder-test</artifactId>
+            <artifactId>spring-cloud-stream-binder-solace-test</artifactId>
             <version>1.0.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
